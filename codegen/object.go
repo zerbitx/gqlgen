@@ -31,6 +31,7 @@ type Object struct {
 	DisableConcurrency bool
 	Stream             bool
 	Directives         []*Directive
+	IsEntity           bool
 }
 
 func (b *builder) buildObject(typ *ast.Definition) (*Object, error) {
@@ -50,6 +51,12 @@ func (b *builder) buildObject(typ *ast.Definition) (*Object, error) {
 			nil,
 			nil,
 		),
+	}
+
+	for _, d := range dirs {
+		if d.Name == "key" {
+			obj.IsEntity = true
+		}
 	}
 
 	if !obj.Root {
@@ -106,7 +113,26 @@ func (o *Object) HasResolvers() bool {
 			return true
 		}
 	}
-	return false
+	return o.IsEntity
+}
+
+func (o *Object) EntityDeclaration() string {
+	resp := "(ctx context.Context, "
+	var key *Directive
+	for _, d := range o.Directives {
+		if d.Name == "key" {
+			key = d
+		}
+	}
+	for _, f := range o.Fields {
+		if key.Args[0].Value.(string) == f.Name {
+			resp += f.Name + " " + f.TypeReference.GO.String()
+		}
+	}
+	resp += ") (*"
+	resp += o.Name
+	resp += ", error)"
+	return resp
 }
 
 func (o *Object) HasUnmarshal() bool {

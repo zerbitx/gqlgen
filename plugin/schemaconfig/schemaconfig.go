@@ -23,7 +23,7 @@ func (m *Plugin) MutateConfig(cfg *config.Config) error {
 		return err
 	}
 
-	schema, _, err := cfg.LoadSchema()
+	schema, err := cfg.LoadSchema()
 	if err != nil {
 		return err
 	}

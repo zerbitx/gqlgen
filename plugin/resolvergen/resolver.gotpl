@@ -28,7 +28,11 @@ type {{.ResolverType}} struct {}
 {{ range $object := .Objects -}}
 	{{- if $object.HasResolvers -}}
 		type {{lcFirst $object.Name}}{{ucFirst $.ResolverType}} struct { *{{$.ResolverType}} }
-
+		{{ if $object.IsEntity }}
+		func (r *{{lcFirst $object.Name}}Resolver) ResolveEntity{{$object.EntityDeclaration}} {
+			panic("not implemented")
+		}
+		{{ end }}
 		{{ range $field := $object.Fields -}}
 			{{- if $field.IsResolver -}}
 			func (r *{{lcFirst $object.Name}}{{ucFirst $.ResolverType}}) {{$field.GoFieldName}}{{ $field.ShortResolverDeclaration }} {

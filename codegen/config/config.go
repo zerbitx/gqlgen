@@ -10,13 +10,12 @@ import (
 	"sort"
 	"strings"
 
-	"golang.org/x/tools/go/packages"
-
 	"github.com/99designs/gqlgen/internal/code"
 	"github.com/pkg/errors"
 	"github.com/vektah/gqlparser"
 	"github.com/vektah/gqlparser/ast"
-	yaml "gopkg.in/yaml.v2"
+	"golang.org/x/tools/go/packages"
+	"gopkg.in/yaml.v2"
 )
 
 type Config struct {
@@ -28,6 +27,7 @@ type Config struct {
 	Models         TypeMap                    `yaml:"models,omitempty"`
 	StructTag      string                     `yaml:"struct_tag,omitempty"`
 	Directives     map[string]DirectiveConfig `yaml:"directives,omitempty"`
+	Federated      bool                       `yaml:"federated,omitempty"`
 }
 
 var cfgFilenames = []string{".gqlgen.yml", "gqlgen.yml", "gqlgen.yaml"}
@@ -431,6 +431,12 @@ func (c *Config) InjectBuiltins(s *ast.Schema) {
 				"github.com/99designs/gqlgen/graphql.IntID",
 			},
 		},
+		"_Service": {
+			Model: StringList{
+				"github.com/99designs/gqlgen/graphql/introspection.Service",
+			},
+		},
+		"_Any": {Model: StringList{"github.com/99designs/gqlgen/graphql.Map"}},
 	}
 
 	for typeName, entry := range builtins {
@@ -454,11 +460,8 @@ func (c *Config) InjectBuiltins(s *ast.Schema) {
 	}
 }
 
-func (c *Config) LoadSchema() (*ast.Schema, map[string]string, error) {
-	schemaStrings := map[string]string{}
-
+func (c *Config) LoadSchema() (*ast.Schema, error) {
 	var sources []*ast.Source
-
 	for _, filename := range c.SchemaFilename {
 		filename = filepath.ToSlash(filename)
 		var err error
@@ -468,15 +471,13 @@ func (c *Config) LoadSchema() (*ast.Schema, map[string]string, error) {
 			fmt.Fprintln(os.Stderr, "unable to open schema: "+err.Error())
 			os.Exit(1)
 		}
-		schemaStrings[filename] = string(schemaRaw)
-		sources = append(sources, &ast.Source{Name: filename, Input: schemaStrings[filename]})
+		sources = append(sources, &ast.Source{Name: filename, Input: string(schemaRaw)})
 	}
-
 	schema, err := gqlparser.LoadSchema(sources...)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return schema, schemaStrings, nil
+	return schema, nil
 }
 
 func abs(path string) string {

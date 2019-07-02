@@ -1,5 +1,7 @@
 module github.com/99designs/gqlgen
 
+go 1.13
+
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-chi/chi v3.3.2+incompatible
@@ -26,3 +28,5 @@ require (
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20180110180208-2cc67fd64755
 	sourcegraph.com/sourcegraph/appdash-data v0.0.0-20151005221446-73f23eafcf67 // indirect
 )
+
+replace github.com/vektah/gqlparser => /Users/208581/nytm/gqlparser

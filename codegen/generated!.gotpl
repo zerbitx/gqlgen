@@ -66,6 +66,9 @@ type ComplexityRoot struct {
 				{{- $field.GoFieldName}}{{ $field.ShortResolverDeclaration }}
 			{{- end }}
 		{{ end }}
+		{{ if $object.IsEntity }}
+			ResolveEntity{{$object.EntityDeclaration}}
+		{{ end }}
 		}
 	{{- end }}
 {{- end }}
@@ -226,6 +229,42 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 		return nil, errors.New("introspection disabled")
 	}
 	return introspection.WrapTypeFromDef(parsedSchema, parsedSchema.Types[name]), nil
+}
+
+	func (ec *executionContext) __resolve_entities(ctx context.Context, representations []map[string]interface{}) ([]_Entity, error) {
+	list := []_Entity{}
+	for _, rep := range representations {
+		typeName, ok := rep["__typename"].(string)
+		if !ok {
+			return nil, errors.New("__typename must be an existing string")
+		}
+		switch typeName {
+		{{ range .Entities }}
+		case "{{.Name}}":
+			id, ok := rep["{{.FieldName}}"].({{.FieldType}})
+			if !ok {
+				return nil, errors.New("opsies")
+			}
+			resp, err := ec.resolvers.{{.Name}}().ResolveEntity(ctx, id)
+			if err != nil {
+				return nil, err
+			}
+			list = append(list, resp)
+		{{ end }}
+		default:
+			return nil, errors.New("unknown type: "+typeName)
+		}
+	}
+	return list, nil
+}
+
+ func (ec *executionContext) __resolve__service(ctx context.Context) (introspection.Service, error) {
+	if ec.DisableIntrospection {
+		return introspection.Service{}, errors.New("federated introspection disabled")
+	}
+	return introspection.Service{
+		SDL: `{{.SDL}}`,
+	}, nil
 }
 
 var parsedSchema = gqlparser.MustLoadSchema(

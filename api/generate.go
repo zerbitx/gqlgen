@@ -3,11 +3,10 @@ package api
 import (
 	"syscall"
 
-	"github.com/99designs/gqlgen/plugin/federation"
-
 	"github.com/99designs/gqlgen/codegen"
 	"github.com/99designs/gqlgen/codegen/config"
 	"github.com/99designs/gqlgen/plugin"
+	"github.com/99designs/gqlgen/plugin/federation"
 	"github.com/99designs/gqlgen/plugin/modelgen"
 	"github.com/99designs/gqlgen/plugin/resolvergen"
 	"github.com/99designs/gqlgen/plugin/schemaconfig"
@@ -35,9 +34,13 @@ func Generate(cfg *config.Config, option ...Option) error {
 		o(cfg, &plugins)
 	}
 
+	schemaMutators := []codegen.SchemaMutator{}
 	for _, p := range plugins {
 		if inj, ok := p.(plugin.SourcesInjector); ok {
 			cfg.AdditionalSources = append(cfg.AdditionalSources, inj.InjectSources()...)
+		}
+		if mut, ok := p.(codegen.SchemaMutator); ok {
+			schemaMutators = append(schemaMutators, mut)
 		}
 	}
 
@@ -49,8 +52,9 @@ func Generate(cfg *config.Config, option ...Option) error {
 			}
 		}
 	}
+
 	// Merge again now that the generated models have been injected into the typemap
-	data, err := codegen.BuildData(cfg)
+	data, err := codegen.BuildData(cfg, schemaMutators)
 	if err != nil {
 		return errors.Wrap(err, "merging failed")
 	}

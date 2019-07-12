@@ -231,33 +231,6 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(parsedSchema, parsedSchema.Types[name]), nil
 }
 
-func (ec *executionContext) __resolve_entities(ctx context.Context, representations []map[string]interface{}) ([]_Entity, error) {
-	list := []_Entity{}
-	for _, rep := range representations {
-		typeName, ok := rep["__typename"].(string)
-		if !ok {
-			return nil, errors.New("__typename must be an existing string")
-		}
-		switch typeName {
-		{{ range .Entities }}
-		case "{{.Name}}":
-			id, ok := rep["{{.FieldName}}"].({{.FieldType}})
-			if !ok {
-				return nil, errors.New("opsies")
-			}
-			resp, err := ec.resolvers.{{.Name}}().ResolveEntity(ctx, id)
-			if err != nil {
-				return nil, err
-			}
-			list = append(list, resp)
-		{{ end }}
-		default:
-			return nil, errors.New("unknown type: "+typeName)
-		}
-	}
-	return list, nil
-}
-
 var parsedSchema = gqlparser.MustLoadSchema(
 	{{- range $filename, $schema := .SchemaStr }}
 		&ast.Source{Name: {{$filename|quote}}, Input: {{$schema|rawQuote}}},

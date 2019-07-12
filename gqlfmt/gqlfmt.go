@@ -160,6 +160,7 @@ func (f *formatter) printTypes() {
 		f.printDirectives(typeDecl.Directives)
 		f.print(" {\n")
 		for _, field := range typeDecl.Fields {
+			f.printDoc(field.Description, 1)
 			f.printf("\t%v: %v\n", field.Name, field.Type.String())
 		}
 		f.print("}\n")
@@ -192,8 +193,10 @@ func (f *formatter) printInputs() {
 	for _, t := range f.inputs {
 		f.println()
 		typeDecl := f.schema.Types[t]
+		f.printDoc(typeDecl.Description, 0)
 		f.printf("input %v {\n", typeDecl.Name)
 		for _, field := range typeDecl.Fields {
+			f.printDoc(field.Description, 1)
 			f.printf("\t%v: %v\n", field.Name, field.Type.String())
 		}
 		f.println("}")
@@ -204,8 +207,10 @@ func (f *formatter) printEnums() {
 	for _, t := range f.enums {
 		f.println()
 		typeDecl := f.schema.Types[t]
-		f.printf("enum %v\n", typeDecl.Name)
+		f.printDoc(typeDecl.Description, 0)
+		f.printf("enum %v {\n", typeDecl.Name)
 		for _, field := range typeDecl.EnumValues {
+			f.printDoc(field.Description, 1)
 			f.printf("\t%v\n", field.Name)
 		}
 		f.println("}")
@@ -221,7 +226,9 @@ func (f *formatter) printScalars() {
 }
 
 func (f *formatter) printUnions() {
-	f.println()
+	if len(f.unions) > 0 {
+		f.println()
+	}
 	for _, t := range f.unions {
 		decl := f.schema.Types[t]
 		sort.Strings(decl.Types)
@@ -230,7 +237,9 @@ func (f *formatter) printUnions() {
 }
 
 func (f *formatter) printDirectiveDefs() {
-	f.println()
+	if len(f.directives) > 0 {
+		f.println()
+	}
 	for _, t := range f.directives {
 		decl := f.schema.Directives[t]
 		locs := []string{}

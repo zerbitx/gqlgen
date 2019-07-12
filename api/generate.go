@@ -3,6 +3,8 @@ package api
 import (
 	"syscall"
 
+	"github.com/99designs/gqlgen/plugin/federation"
+
 	"github.com/99designs/gqlgen/codegen"
 	"github.com/99designs/gqlgen/codegen/config"
 	"github.com/99designs/gqlgen/plugin"
@@ -17,14 +19,26 @@ func Generate(cfg *config.Config, option ...Option) error {
 	_ = syscall.Unlink(cfg.Exec.Filename)
 	_ = syscall.Unlink(cfg.Model.Filename)
 
+	if err := cfg.Check(); err != nil {
+		return err
+	}
 	plugins := []plugin.Plugin{
 		schemaconfig.New(),
 		modelgen.New(),
 		resolvergen.New(),
 	}
+	if cfg.Federated {
+		plugins = append([]plugin.Plugin{federation.New()}, plugins...)
+	}
 
 	for _, o := range option {
 		o(cfg, &plugins)
+	}
+
+	for _, p := range plugins {
+		if inj, ok := p.(plugin.SourcesInjector); ok {
+			cfg.AdditionalSources = append(cfg.AdditionalSources, inj.InjectSources()...)
+		}
 	}
 
 	for _, p := range plugins {

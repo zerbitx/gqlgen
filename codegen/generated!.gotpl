@@ -231,7 +231,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(parsedSchema, parsedSchema.Types[name]), nil
 }
 
-	func (ec *executionContext) __resolve_entities(ctx context.Context, representations []map[string]interface{}) ([]_Entity, error) {
+func (ec *executionContext) __resolve_entities(ctx context.Context, representations []map[string]interface{}) ([]_Entity, error) {
 	list := []_Entity{}
 	for _, rep := range representations {
 		typeName, ok := rep["__typename"].(string)
@@ -256,15 +256,6 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 		}
 	}
 	return list, nil
-}
-
- func (ec *executionContext) __resolve__service(ctx context.Context) (introspection.Service, error) {
-	if ec.DisableIntrospection {
-		return introspection.Service{}, errors.New("federated introspection disabled")
-	}
-	return introspection.Service{
-		SDL: `{{.SDL}}`,
-	}, nil
 }
 
 var parsedSchema = gqlparser.MustLoadSchema(

@@ -145,13 +145,10 @@ func BuildData(cfg *config.Config) (*Data, error) {
 	if err := b.injectIntrospectionRoots(&s); err != nil {
 		return nil, err
 	}
-	var hasKeyDirectives bool
-	if b.Schema.Federated() {
-		hasKeyDirectives = true
+
+	if cfg.Federated {
 		b.injectEntityUnion(&s)
 		b.injectEntitiesQuery(&s)
-	}
-	if hasKeyDirectives || cfg.Federated {
 		b.injectSDL(&s)
 	}
 	s.ReferencedTypes, err = b.buildTypes()

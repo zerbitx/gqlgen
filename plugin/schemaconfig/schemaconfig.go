@@ -19,10 +19,6 @@ func (m *Plugin) Name() string {
 }
 
 func (m *Plugin) MutateConfig(cfg *config.Config) error {
-	if err := cfg.Check(); err != nil {
-		return err
-	}
-
 	schema, err := cfg.LoadSchema()
 	if err != nil {
 		return err

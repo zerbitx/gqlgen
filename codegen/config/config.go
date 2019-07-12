@@ -19,15 +19,16 @@ import (
 )
 
 type Config struct {
-	SchemaFilename StringList                 `yaml:"schema,omitempty"`
-	Exec           PackageConfig              `yaml:"exec"`
-	Model          PackageConfig              `yaml:"model"`
-	Resolver       PackageConfig              `yaml:"resolver,omitempty"`
-	AutoBind       []string                   `yaml:"autobind"`
-	Models         TypeMap                    `yaml:"models,omitempty"`
-	StructTag      string                     `yaml:"struct_tag,omitempty"`
-	Directives     map[string]DirectiveConfig `yaml:"directives,omitempty"`
-	Federated      bool                       `yaml:"federated,omitempty"`
+	SchemaFilename    StringList                 `yaml:"schema,omitempty"`
+	Exec              PackageConfig              `yaml:"exec"`
+	Model             PackageConfig              `yaml:"model"`
+	Resolver          PackageConfig              `yaml:"resolver,omitempty"`
+	AutoBind          []string                   `yaml:"autobind"`
+	Models            TypeMap                    `yaml:"models,omitempty"`
+	StructTag         string                     `yaml:"struct_tag,omitempty"`
+	Directives        map[string]DirectiveConfig `yaml:"directives,omitempty"`
+	Federated         bool                       `yaml:"federated,omitempty"`
+	AdditionalSources []*ast.Source              `yaml:"-"`
 }
 
 var cfgFilenames = []string{".gqlgen.yml", "gqlgen.yml", "gqlgen.yaml"}
@@ -431,12 +432,6 @@ func (c *Config) InjectBuiltins(s *ast.Schema) {
 				"github.com/99designs/gqlgen/graphql.IntID",
 			},
 		},
-		"_Service": {
-			Model: StringList{
-				"github.com/99designs/gqlgen/graphql/introspection.Service",
-			},
-		},
-		"_Any": {Model: StringList{"github.com/99designs/gqlgen/graphql.Map"}},
 	}
 
 	for typeName, entry := range builtins {
@@ -461,7 +456,7 @@ func (c *Config) InjectBuiltins(s *ast.Schema) {
 }
 
 func (c *Config) LoadSchema() (*ast.Schema, error) {
-	var sources []*ast.Source
+	sources := append([]*ast.Source{}, c.AdditionalSources...)
 	for _, filename := range c.SchemaFilename {
 		filename = filepath.ToSlash(filename)
 		var err error

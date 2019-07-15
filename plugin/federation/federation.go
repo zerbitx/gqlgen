@@ -1,15 +1,17 @@
 package federation
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
+	"github.com/vektah/gqlparser/formatter"
+
 	"github.com/99designs/gqlgen/codegen"
 	"github.com/99designs/gqlgen/codegen/config"
 	"github.com/99designs/gqlgen/codegen/templates"
-	"github.com/99designs/gqlgen/gqlfmt"
 	"github.com/99designs/gqlgen/plugin"
 	"github.com/vektah/gqlparser"
 	"github.com/vektah/gqlparser/ast"
@@ -194,7 +196,9 @@ func (f *federation) getSDL(c *config.Config) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return gqlfmt.PrintSchema(schema)
+	var buf bytes.Buffer
+	formatter.NewFormatter(&buf).FormatSchema(schema)
+	return buf.String(), nil
 }
 
 var tmpl = `

@@ -1,13 +1,14 @@
 package codegen
 
 import (
+	"bytes"
 	"fmt"
 	"sort"
 
 	"github.com/99designs/gqlgen/codegen/config"
-	"github.com/99designs/gqlgen/gqlfmt"
 	"github.com/pkg/errors"
 	"github.com/vektah/gqlparser/ast"
+	"github.com/vektah/gqlparser/formatter"
 )
 
 // Data is a unified model of the code to be generated. Plugins may modify this structure to do things like implement
@@ -145,12 +146,9 @@ func BuildData(cfg *config.Config, plugins []SchemaMutator) (*Data, error) {
 		return s.Inputs[i].Definition.Name < s.Inputs[j].Definition.Name
 	})
 
-	str, err := gqlfmt.PrintSchema(b.Schema)
-	if err != nil {
-		return nil, err
-	}
-	// TODO: fix this
-	s.SchemaStr = map[string]string{"schema.graphql": str}
+	var buf bytes.Buffer
+	formatter.NewFormatter(&buf).FormatSchema(b.Schema)
+	s.SchemaStr = map[string]string{"schema.graphql": buf.String()}
 
 	return &s, nil
 }

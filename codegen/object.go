@@ -31,7 +31,6 @@ type Object struct {
 	DisableConcurrency bool
 	Stream             bool
 	Directives         []*Directive
-	IsEntity           bool
 }
 
 func (b *builder) buildObject(typ *ast.Definition) (*Object, error) {
@@ -51,12 +50,6 @@ func (b *builder) buildObject(typ *ast.Definition) (*Object, error) {
 			nil,
 			nil,
 		),
-	}
-
-	for _, d := range dirs {
-		if d.Name == "key" {
-			obj.IsEntity = true
-		}
 	}
 
 	if !obj.Root {
@@ -113,7 +106,7 @@ func (o *Object) HasResolvers() bool {
 			return true
 		}
 	}
-	return o.IsEntity
+	return false
 }
 
 func (o *Object) EntityDeclaration() string {

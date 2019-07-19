@@ -37,7 +37,7 @@ func Generate(cfg *config.Config, option ...Option) error {
 	schemaMutators := []codegen.SchemaMutator{}
 	for _, p := range plugins {
 		if inj, ok := p.(plugin.SourcesInjector); ok {
-			cfg.AdditionalSources = append(cfg.AdditionalSources, inj.InjectSources()...)
+			inj.InjectSources(cfg)
 		}
 		if mut, ok := p.(codegen.SchemaMutator); ok {
 			schemaMutators = append(schemaMutators, mut)
@@ -59,10 +59,6 @@ func Generate(cfg *config.Config, option ...Option) error {
 		return errors.Wrap(err, "merging failed")
 	}
 
-	if err = codegen.GenerateCode(data); err != nil {
-		return errors.Wrap(err, "generating core failed")
-	}
-
 	for _, p := range plugins {
 		if mut, ok := p.(plugin.CodeGenerator); ok {
 			err := mut.GenerateCode(data)
@@ -70,6 +66,10 @@ func Generate(cfg *config.Config, option ...Option) error {
 				return errors.Wrap(err, p.Name())
 			}
 		}
+	}
+
+	if err = codegen.GenerateCode(data); err != nil {
+		return errors.Wrap(err, "generating core failed")
 	}
 
 	if err := validate(cfg); err != nil {

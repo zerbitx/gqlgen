@@ -66,9 +66,6 @@ type ComplexityRoot struct {
 				{{- $field.GoFieldName}}{{ $field.ShortResolverDeclaration }}
 			{{- end }}
 		{{ end }}
-		{{ if $object.IsEntity }}
-			ResolveEntity{{$object.EntityDeclaration}}
-		{{ end }}
 		}
 	{{- end }}
 {{- end }}

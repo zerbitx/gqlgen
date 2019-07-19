@@ -6,8 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-
-	"github.com/vektah/gqlparser/formatter"
+	"strings"
 
 	"github.com/99designs/gqlgen/codegen"
 	"github.com/99designs/gqlgen/codegen/config"
@@ -15,6 +14,7 @@ import (
 	"github.com/99designs/gqlgen/plugin"
 	"github.com/vektah/gqlparser"
 	"github.com/vektah/gqlparser/ast"
+	"github.com/vektah/gqlparser/formatter"
 )
 
 type federation struct {
@@ -33,6 +33,10 @@ func (f *federation) Name() string {
 }
 
 func (f *federation) MutateConfig(cfg *config.Config) error {
+	entityFields := map[string]config.TypeMapField{}
+	for _, e := range f.Entities {
+		entityFields[e.ResolverName] = config.TypeMapField{Resolver: true}
+	}
 	builtins := config.TypeMap{
 		"_Service": {
 			Model: config.StringList{
@@ -40,6 +44,9 @@ func (f *federation) MutateConfig(cfg *config.Config) error {
 			},
 		},
 		"_Any": {Model: config.StringList{"github.com/99designs/gqlgen/graphql.Map"}},
+		"Entity": {
+			Fields: entityFields,
+		},
 	}
 	for typeName, entry := range builtins {
 		if cfg.Models.Exists(typeName) {
@@ -48,13 +55,18 @@ func (f *federation) MutateConfig(cfg *config.Config) error {
 		cfg.Models[typeName] = entry
 	}
 
-	f.setEntities(cfg)
-
 	return nil
 }
 
-func (f *federation) InjectSources() []*ast.Source {
-	return []*ast.Source{f.getSource(false)}
+func (f *federation) InjectSources(cfg *config.Config) {
+	cfg.AdditionalSources = append(cfg.AdditionalSources, f.getSource(false))
+	f.setEntities(cfg)
+	s := "type Entity {\n"
+	for _, e := range f.Entities {
+		s += fmt.Sprintf("\t%s(%s: %s): %s!\n", e.ResolverName, e.FieldName, e.FieldTypeGQL, e.Name)
+	}
+	s += "}"
+	cfg.AdditionalSources = append(cfg.AdditionalSources, &ast.Source{Name: "entity.graphql", Input: s, BuiltIn: true})
 }
 
 func (f *federation) MutateSchema(s *ast.Schema) error {
@@ -129,10 +141,12 @@ directive @extends on OBJECT
 // Entity represents a federated type
 // that was declared in the GQL schema.
 type Entity struct {
-	Name      string
-	FieldName string
-	FieldType string
-	Def       *ast.Definition
+	Name         string // The same name as the type declaration
+	FieldName    string // The field name declared in @key
+	FieldTypeGo  string // The Go representation of that field type
+	FieldTypeGQL string // The GQL represetation of that field type
+	ResolverName string // The resolver name, such as FindUserByID
+	Def          *ast.Definition
 }
 
 func (f *federation) GenerateCode(data *codegen.Data) error {
@@ -141,11 +155,12 @@ func (f *federation) GenerateCode(data *codegen.Data) error {
 		return err
 	}
 	f.SDL = sdl
+	data.Objects.ByName("Entity").Root = true
 	for _, e := range f.Entities {
 		obj := data.Objects.ByName(e.Name)
 		for _, f := range obj.Fields {
 			if f.Name == e.FieldName {
-				e.FieldType = f.TypeReference.GO.String()
+				e.FieldTypeGo = f.TypeReference.GO.String()
 			}
 		}
 	}
@@ -169,10 +184,16 @@ func (f *federation) setEntities(cfg *config.Config) {
 			dir := schemaType.Directives.ForName("key") // TODO: interfaces
 			if dir != nil {
 				fieldName := dir.Arguments[0].Value.Raw // TODO: multiple arguments,a nd multiple keys
+				if strings.Contains(fieldName, " ") {
+					panic("only single fields are currently supported in @key declaration")
+				}
+				field := schemaType.Fields.ForName(fieldName)
 				f.Entities = append(f.Entities, &Entity{
-					Name:      schemaType.Name,
-					FieldName: fieldName,
-					Def:       schemaType,
+					Name:         schemaType.Name,
+					FieldName:    fieldName,
+					FieldTypeGQL: field.Type.String(),
+					Def:          schemaType,
+					ResolverName: fmt.Sprintf("find%sBy%s", schemaType.Name, strings.Title(fieldName)),
 				})
 			}
 		}
@@ -226,11 +247,11 @@ func (ec *executionContext) __resolve_entities(ctx context.Context, representati
 		switch typeName {
 		{{ range .Entities }}
 		case "{{.Name}}":
-			id, ok := rep["{{.FieldName}}"].({{.FieldType}})
+			id, ok := rep["{{.FieldName}}"].({{.FieldTypeGo}})
 			if !ok {
 				return nil, errors.New("opsies")
 			}
-			resp, err := ec.resolvers.{{.Name}}().ResolveEntity(ctx, id)
+			resp, err := ec.resolvers.Entity().{{.ResolverName | title}}(ctx, id)
 			if err != nil {
 				return nil, err
 			}

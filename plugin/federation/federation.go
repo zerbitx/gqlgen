@@ -251,7 +251,7 @@ func (ec *executionContext) __resolve_entities(ctx context.Context, representati
 			if !ok {
 				return nil, errors.New("opsies")
 			}
-			resp, err := ec.resolvers.Entity().{{.ResolverName | title}}(ctx, id)
+			resp, err := ec.resolvers.Entity().{{.ResolverName | go}}(ctx, id)
 			if err != nil {
 				return nil, err
 			}
